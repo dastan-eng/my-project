@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Морской бой: Премиум</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: radial-gradient(circle at center, #0a2f44 0%, #05161e 100%);
+      color: #e0f7fa;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 15px;
+    }
+    h1 { font-size: 2.5em; text-shadow: 0 0 25px #00bcd4; margin: 10px 0; }
+    .container { max-width: 1000px; width: 100%; }
+    .tabs { display: flex; justify-content: center; gap: 5px; margin-bottom: 15px; }
+    .tab-btn {
+      background: rgba(0,30,50,0.8);
+      border: 2px solid #00bcd4;
+      color: #b3e5fc;
+      padding: 10px 20px;
+      border-radius: 20px 20px 0 0;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tab-btn.active { background: #00bcd4; color: #000; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .card {
+      background: rgba(0,30,50,0.9);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 0 30px rgba(0,150,255,0.4);
+      text-align: center;
+    }
+    label { display: block; margin: 10px 0 5px; font-weight: bold; }
+    input[type=text], select {
+      padding: 8px 15px;
+      border-radius: 20px;
+      border: 2px solid #00bcd4;
+      background: #021a2b;
+      color: #e0f7fa;
+      font-size: 1em;
+      width: 200px;
+      text-align: center;
+    }
+    .btn {
+      background: #0277bd;
+      border: none;
+      color: white;
+      padding: 12px 28px;
+      margin: 8px;
+      font-size: 1.1em;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: 0.3s;
+      box-shadow: 0 0 12px #0288d1;
+    }
+    .btn:hover { background: #039be5; box-shadow: 0 0 25px #4fc3f7; }
+    .btn.primary { background: #00bcd4; color: #000; font-weight: bold; }
+    .btn.danger { background: #d32f2f; }
+    .btn.selected { background: #00bcd4; color: #000; font-weight: bold; }
+    .option-group { margin: 15px 0; }
+    .boards { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+    .board-wrap {
+      background: rgba(0,20,40,0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 15px;
+      box-shadow: 0 0 25px rgba(0,150,255,0.4);
+    }
+    .board-label { font-size: 1.3em; margin-bottom: 8px; }
+    canvas { border: 2px solid #00bcd4; border-radius: 10px; background: #021a2b; }
+    .energy-panel { text-align: center; margin-top: 5px; }
+    .energy-bar { width: 120px; height: 8px; background: #333; border-radius: 10px; margin: 5px auto; }
+    .energy-fill { height: 100%; background: #00bcd4; border-radius: 10px; transition: width 0.3s; }
+    .info-card {
+      background: rgba(0,20,40,0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    .log-panel {
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 0.9em;
+      background: rgba(0,0,0,0.4);
+      padding: 8px;
+      border-radius: 8px;
+    }
+    .shake { animation: shake 0.4s; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0);} 20%{transform:translateX(-6px);} 40%{transform:translateX(6px);} 60%{transform:translateX(-4px);} 80%{transform:translateX(4px);}
+    }
+    .special-btn {
+      background: #ff6f00;
+      border: none;
+      color: white;
+      padding: 8px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      margin: 5px;
+      font-weight: bold;
+    }
+    .special-btn:disabled { opacity: 0.4; pointer-events: none; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚓ Морской бой: Премиум ⚓</h1>
+
+    <!-- Главное меню с вкладками -->
+    <div id="mainMenu">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('mode')">Режим</button>
+        <button class="tab-btn" onclick="switchTab('options')">Настройки</button>
+      </div>
+      <div id="tab-mode" class="tab-content active">
+        <div class="card">
+          <label>Имя игрока</label>
+          <input type="text" id="player1Name" placeholder="Игрок" value="Игрок">
+          <input type="text" id="player2Name" placeholder="Второй игрок (для Hot‑Seat)" value="Игрок 2">
+          <div class="option-group">
+            <button class="btn selected" id="modeHotseat">👥 Hot‑Seat</button>
+            <button class="btn" id="modeAI">🤖 Против ИИ</button>
+            <button class="btn" id="modeCampaign">📜 Кампания</button>
+          </div>
+          <div id="difficultyGroup" class="option-group">
+            <span>Сложность:</span>
+            <button class="btn selected" id="diffMedium">🦈 Средний</button>
+            <button class="btn" id="diffEasy">🐟 Лёгкий</button>
+            <button class="btn" id="diffHard">🦑 Хитрый</button>
+          </div>
+          <div class="option-group">
+            <span>Вариант:</span>
+            <button class="btn selected" id="varClassic">Классический</button>
+            <button class="btn" id="varExtended">Расширенный</button>
+          </div>
+          <button class="btn primary" onclick="startPlacement()">🚀 Начать игру</button>
+          <button class="btn" onclick="loadGame()">💾 Загрузить</button>
+        </div>
+      </div>
+      <div id="tab-options" class="tab-content">
+        <div class="card">
+          <label><input type="checkbox" id="confirmCheckbox" checked> Подтверждение выстрела</label>
+          <label><input type="checkbox" id="timerCheckbox" checked> Таймер хода (30 сек)</label>
+          <label>Громкость: <input type="range" id="volumeSlider" min="0" max="100" value="50"></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Экран расстановки -->
+    <div id="placementScreen" style="display:none;">
+      <div class="boards">
+        <div class="board-wrap">
+          <div class="board-label" id="placementLabel">Расставьте корабли</div>
+          <canvas id="placementCanvas" width="350" height="350"></canvas>
+        </div>
+        <div>
+          <div id="shipsPanel" style="display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin-top:10px;"></div>
+          <div style="text-align:center; margin:10px 0;">
+            <button class="btn" onclick="doRandomPlacement()">🎲 Случайно</button>
+            <button class="btn primary" id="startGameBtn" disabled onclick="startBattle()">⚔️ В бой</button>
+          </div>
+          <button class="btn danger" onclick="backToMenu()">↩️ В меню</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Экран боя -->
+    <div id="battleScreen" style="display:none;">
+      <div class="boards" id="battleGrid">
+        <div class="board-wrap">
+          <div class="board-label" id="playerLabel"></div>
+          <canvas id="playerCanvas" width="350" height="350"></canvas>
+          <div class="energy-panel">
+            <div class="energy-bar"><div id="playerEnergyFill" class="energy-fill" style="width:100%"></div></div>
+            <span id="playerEnergyText">Энергия: 100</span>
+          </div>
+        </div>
+        <div class="board-wrap">
+          <div class="board-label" id="opponentLabel"></div>
+          <canvas id="opponentCanvas" width="350" height="350"></canvas>
+        </div>
+      </div>
+      <div class="info-card">
+        <div><button class="special-btn hidden" id="radarBtn" onclick="useRadar()">📡 Радар</button>
+        <button class="special-btn hidden" id="airstrikeBtn" onclick="useAirstrike()">✈️ Авиаудар</button></div>
+        <div id="statusText" style="font-size:1.4em; margin:5px 0;"></div>
+        <div id="messageText" style="color:#ffb74d; min-height:1.5em;"></div>
+        <div class="log-panel" id="logPanel"></div>
+        <div id="timerDisplay"></div>
+        <button class="btn" onclick="saveGame()">💾 Сохранить</button>
+        <button class="btn danger" onclick="newGame()">🔄 Сдаться</button>
+      </div>
+    </div>
+
+    <!-- Оверлеи -->
+    <div id="turnOverlay" style="display:none; position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8); align-items:center;justify-content:center; flex-direction:column; z-index:20;">
+      <h2>Передайте ход</h2>
+      <div id="turnOverlayPlayer" style="font-size:2em; margin:20px;"></div>
+      <button class="btn primary" onclick="continueTurn()">✔️ Продолжить</button>
+    </div>
+    <div id="confirmOverlay" style="display:none; position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8); align-items:center;justify-content:center; flex-direction:column; z-index:20;">
+      <h2>Подтвердите выстрел</h2>
+      <div id="confirmCoord" style="font-size:2em; margin:20px;"></div>
+      <button class="btn primary" onclick="confirmShot(true)">Да</button>
+      <button class="btn danger" onclick="confirmShot(false)">Нет</button>
+    </div>
+  </div>
+
+  <script>
+    // ==================== ЗВУК ====================
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx, bgMusic;
+    let gameVolume = 0.5;
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new AudioCtx();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 55;
+      gain.gain.value = 0.03 * gameVolume;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      const lfo = audioCtx.createOscillator(), lfoGain = audioCtx.createGain();
+      lfo.frequency.value = 0.08;
+      lfoGain.gain.value = 12;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start();
+      bgMusic = { osc, gain, lfo };
+    }
+    function sfxShoot() { playSound(180,'square',0.08,0.2); }
+    function sfxHit() { playSound(500,'sawtooth',0.12,0.3); }
+    function sfxMiss() { playSound(70,'triangle',0.15,0.25); }
+    function sfxSunk() { playSound(800,'square',0.18,0.4); setTimeout(()=>playSound(250,'triangle',0.25,0.5),150); }
+    function sfxArmorBreak() { playSound(300,'triangle',0.1,0.2); }
+    function sfxMineExplode() { playSound(150,'sawtooth',0.2,0.5); setTimeout(()=>playSound(50,'sine',0.4,0.6),200); }
+    function sfxTurn() { playSound(440,'sine',0.15,0.2); }
+    function sfxRadar() { playSound(1000,'sine',0.1,0.1); }
+    function sfxAirstrike() { playSound(100,'sawtooth',0.3,0.5); }
+    function sfxWin() { for(let i=0;i<5;i++) setTimeout(()=>playSound(523+i*100,'square',0.2,0.2), i*150); }
+    function sfxLose() { playSound(150,'triangle',0.5,1); }
+    function playSound(f,d,t,v=0.3){
+      if(!audioCtx) return;
+      v *= gameVolume;
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = d;
+      o.frequency.value = f;
+      g.gain.value = v;
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + t);
+      o.stop(audioCtx.currentTime + t);
+    }
+
+    // ==================== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ====================
+    window.switchTab = function(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      if (tabId === 'mode') {
+        document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+        document.getElementById('tab-mode').classList.add('active');
+      } else {
+        document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+        document.getElementById('tab-options').classList.add('active');
+      }
+    };
+
+    // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
+    const BOARD_SIZE = 10, CELL_SIZE = 30, PADDING = 25;
+    const MAX_ENERGY = 100, RADAR_COST = 30, AIRSTRIKE_COST = 50, ENERGY_REGEN = 15;
+
+    let gameMode = 'hotseat', gameVariant = 'classic', aiDifficulty = 'medium';
+    let player1Name = 'Игрок', player2Name = 'Игрок 2';
+    let useConfirm = true, useTimer = true;
+
+    let playerBoard, opponentBoard, playerShips, opponentShips;
+    let currentTurn = 'player', gameOver = false, winner = null;
+    let hotSeatTurn = 1, hotSeatPlacementTurn = 1;
+    let energy = [MAX_ENERGY, MAX_ENERGY], mines = [[], []], armor = [null, null];
+    let fogGrid = null;
+    let eventLog = [];
+    let ai = null;
+    let campaignMission = 0;
+    const campaignMissions = [
+      { name: 'Миссия 1', desc: 'Победите врага.', options:{} },
+      { name: 'Миссия 2', desc: 'Мало энергии.', options:{energyStart:50} },
+      { name: 'Миссия 3', desc: 'Туман войны.', options:{fog:true} },
+      { name: 'Миссия 4', desc: 'Много островов.', options:{islands:15,extended:true} },
+      { name: 'Миссия 5', desc: 'Враг с бронёй.', options:{aiArmor:true,aiMines:true,extended:true} }
+    ];
+
+    let placementBoard = [], placedShips = [], remainingShips = [];
+    let selectedShipType = null, selectedShipSize = 0, isHorizontal = true;
+    let hoverCoords = null, islands = [], smokeParticles = [];
+    let turnTimeLeft = 30, timerInterval = null;
+    let pendingShotCoord = null;
+    const playerNames = { player: 'Игрок', opponent: 'Противник' };
+
+    // ==================== DOM ЭЛЕМЕНТЫ ====================
+    const placementCanvas = document.getElementById('placementCanvas'), placementCtx = placementCanvas.getContext('2d');
+    const playerCanvas = document.getElementById('playerCanvas'), playerCtx = playerCanvas.getContext('2d');
+    const opponentCanvas = document.getElementById('opponentCanvas'), opponentCtx = opponentCanvas.getContext('2d');
+    const statusText = document.getElementById('statusText'), messageText = document.getElementById('messageText');
+    const playerLabel = document.getElementById('playerLabel'), opponentLabel = document.getElementById('opponentLabel');
+    const playerEnergyFill = document.getElementById('playerEnergyFill'), playerEnergyText = document.getElementById('playerEnergyText');
+    const logPanel = document.getElementById('logPanel'), timerDisplay = document.getElementById('timerDisplay');
+    const confirmOverlay = document.getElementById('confirmOverlay'), confirmCoord = document.getElementById('confirmCoord');
+
+    // ==================== ФУНКЦИИ ПОЛЯ ====================
+    function createEmptyBoard() { return Array.from({length:BOARD_SIZE}, () => Array(BOARD_SIZE).fill(0)); }
+    function generateIslands(board, count = 5+Math.floor(Math.random()*7)) {
+      const temp = board.map(r => [...r]);
+      const isl = [];
+      for (let i=0; i<count; i++) {
+        let attempts = 0;
+        while (attempts < 50) {
+          const x = Math.floor(Math.random()*BOARD_SIZE), y = Math.floor(Math.random()*BOARD_SIZE);
+          if (temp[y][x] === 0) {
+            let can = true;
+            for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++) {
+              const nx = x+dx, ny = y+dy;
+              if (nx>=0 && nx<BOARD_SIZE && ny>=0 && ny<BOARD_SIZE && temp[ny][nx] === 5) can = false;
+            }
+            if (can) { isl.push({x,y}); temp[y][x] = 5; break; }
+          }
+          attempts++;
+        }
+      }
+      return isl;
+    }
+    function placeMines(board, playerIdx) {
+      const newMines = [];
+      for (let i=0; i<3; i++) {
+        let placed = false;
+        while (!placed) {
+          const x = Math.floor(Math.random()*BOARD_SIZE), y = Math.floor(Math.random()*BOARD_SIZE);
+          if (board[y][x] === 0) { newMines.push({x,y}); board[y][x] = 6; placed = true; }
+        }
+      }
+      mines[playerIdx] = newMines;
+    }
+    function isValidPlacement(board, coords) {
+      return coords.every(({x,y}) => x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE && board[y][x] === 0) &&
+             !coords.some(({x,y}) => {
+               for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++) {
+                 const nx = x+dx, ny = y+dy;
+                 if (nx>=0 && nx<BOARD_SIZE && ny>=0 && ny<BOARD_SIZE && board[ny][nx] === 1) return true;
+               }
+               return false;
+             });
+    }
+    function generateCoords(x, y, size, horiz) {
+      const coords = [];
+      for (let i=0; i<size; i++) {
+        const cx = horiz ? x+i : x, cy = horiz ? y : y+i;
+        if (cx >= BOARD_SIZE || cy >= BOARD_SIZE) break;
+        coords.push({x:cx, y:cy});
+      }
+      return coords.length === size ? coords : [];
+    }
+    function placeShip(board, type, coords) {
+      const ship = { type, coords, hits: new Array(coords.length).fill(false), armor: 0 };
+      coords.forEach(c => board[c.y][c.x] = 1);
+      return ship;
+    }
+    // Внутренняя функция случайной расстановки (переименована, чтобы не конфликтовать с глобальной)
+    function generateRandomPlacement() {
+      const cleanBoard = createEmptyBoard();
+      islands.forEach(isl => cleanBoard[isl.y][isl.x] = 5);
+      const board = cleanBoard.map(r => [...r]);
+      const ships = [];
+      const types = [{type:5,count:1},{type:4,count:1},{type:3,count:2},{type:3,count:1},{type:2,count:2}];
+      for (let st of types) for (let i=0; i<st.count; i++) {
+        let placed = false;
+        while (!placed) {
+          const horiz = Math.random() > 0.5, x = Math.floor(Math.random()*BOARD_SIZE), y = Math.floor(Math.random()*BOARD_SIZE);
+          const coords = generateCoords(x, y, st.type, horiz);
+          if (coords.length && isValidPlacement(board, coords)) {
+            ships.push(placeShip(board, st.type, coords));
+            placed = true;
+          }
+        }
+      }
+      return { board, ships };
+    }
+    // Глобальная функция, вызываемая по кнопке «Случайно»
+    window.doRandomPlacement = function() {
+      const { board, ships } = generateRandomPlacement();
+      placementBoard = board; placedShips = ships;
+      remainingShips = []; selectedShipType = null;
+      document.getElementById('shipsPanel').innerHTML = '';
+      document.getElementById('startGameBtn').disabled = false;
+      drawBoard(placementCtx, placementBoard, false);
+    };
+    function receiveShot(ships, coord, board, attackerIdx) {
+      if (board[coord.y][coord.x] === 6) {
+        board[coord.y][coord.x] = 0;
+        const attackerShips = attackerIdx === 0 ? playerShips : opponentShips;
+        const segments = [];
+        attackerShips.forEach(s => s.coords.forEach((c, i) => { if (!s.hits[i]) segments.push({ship:s, idx:i}); }));
+        if (segments.length) {
+          const seg = segments[Math.floor(Math.random() * segments.length)];
+          seg.ship.hits[seg.idx] = true;
+          const attackerBoard = attackerIdx === 0 ? playerBoard : opponentBoard;
+          attackerBoard[seg.ship.coords[seg.idx].y][seg.ship.coords[seg.idx].x] = 2;
+          if (seg.ship.hits.every(h=>h)) {
+            seg.ship.coords.forEach(c => attackerBoard[c.y][c.x] = 4);
+            addSmoke(attackerIdx===0 ? playerCanvas : opponentCanvas, seg.ship.coords[0].x, seg.ship.coords[0].y);
+          }
+          sfxMineExplode();
+          messageText.innerText = '💥 Мина!';
+          if (areAllShipsSunk(attackerShips)) { gameOver = true; winner = attackerIdx === 0 ? 'player2' : 'player1'; }
+        } else messageText.innerText = '💥 Мина без урона';
+        return { result: 'mine' };
+      }
+      for (let ship of ships) {
+        const idx = ship.coords.findIndex(c => c.x===coord.x && c.y===coord.y);
+        if (idx !== -1) {
+          if (ship.armor > 0) { ship.armor--; sfxArmorBreak(); messageText.innerText = '🛡️ Броня!'; return { result: 'armor', ship }; }
+          ship.hits[idx] = true; board[coord.y][coord.x] = 2;
+          if (ship.hits.every(h => h)) { ship.coords.forEach(c => board[c.y][c.x] = 4); return { result: 'sunk', ship }; }
+          return { result: 'hit' };
+        }
+      }
+      board[coord.y][coord.x] = 3;
+      return { result: 'miss' };
+    }
+    function areAllShipsSunk(ships) { return ships.every(s => s.hits.every(h => h)); }
+
+    // ==================== ИИ ====================
+    class AIPlayer {
+      constructor(level) {
+        this.level = level;
+        this.tried = Array.from({length:BOARD_SIZE}, () => Array(BOARD_SIZE).fill(false));
+        this.lastHit = null;
+        this.potential = [];
+        this.preferred = [];
+        if (level === 'hard') {
+          for (let y=0; y<BOARD_SIZE; y++) for (let x=(y%2===0?0:1); x<BOARD_SIZE; x+=2) this.preferred.push({x,y});
+          this.preferred.sort(() => Math.random() - 0.5);
+        }
+      }
+      report(coord, result) {
+        this.tried[coord.y][coord.x] = true;
+        if (result === 'hit') { this.lastHit = coord; this.potential = this.adjacent(coord).filter(c => !this.tried[c.y][c.x]); }
+        else if (result === 'sunk') { this.lastHit = null; this.potential = []; }
+        else if (this.lastHit) this.potential = this.potential.filter(c => c.x !== coord.x || c.y !== coord.y);
+      }
+      getNext() {
+        if (this.potential.length) return this.potential.shift();
+        if (this.preferred.length) while (this.preferred.length) { const c = this.preferred.shift(); if (!this.tried[c.y][c.x]) return c; }
+        let x, y;
+        do { x = Math.floor(Math.random()*BOARD_SIZE); y = Math.floor(Math.random()*BOARD_SIZE); } while (this.tried[y][x]);
+        return {x, y};
+      }
+      adjacent(c) { return [[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>({x:c.x+dx, y:c.y+dy})).filter(c => c.x>=0 && c.x<BOARD_SIZE && c.y>=0 && c.y<BOARD_SIZE); }
+    }
+
+    // ==================== ТУМАН ====================
+    function initFog() { fogGrid = Array.from({length:BOARD_SIZE}, () => Array(BOARD_SIZE).fill(true)); }
+    function updateFog(coord) {
+      if (!fogGrid) return;
+      for (let dy=-1; dy<=1; dy++) for (let dx=-1; dx<=1; dx++) {
+        const nx = coord.x+dx, ny = coord.y+dy;
+        if (nx>=0 && nx<BOARD_SIZE && ny>=0 && ny<BOARD_SIZE) fogGrid[ny][nx] = false;
+      }
+    }
+    function drawFog(ctx) {
+      if (!fogGrid) return;
+      for (let y=0; y<BOARD_SIZE; y++) for (let x=0; x<BOARD_SIZE; x++) {
+        if (fogGrid[y][x]) {
+          ctx.fillStyle = 'rgba(0,20,40,0.7)';
+          ctx.fillRect(PADDING+x*CELL_SIZE, PADDING+y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        }
+      }
+    }
+
+    // ==================== ДЫМ ====================
+    class SmokeParticle {
+      constructor(x,y){ this.x=x; this.y=y; this.vx=(Math.random()-0.5)*0.5; this.vy=-Math.random()*1.5-0.5; this.life=40+Math.random()*30; this.maxLife=this.life; this.size=2+Math.random()*3; }
+      update(){ this.x+=this.vx; this.y+=this.vy; this.vy+=0.02; this.life--; }
+      draw(ctx){ const alpha=this.life/this.maxLife; ctx.save(); ctx.globalAlpha=alpha*0.7; ctx.fillStyle='#757575'; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+      get alive(){ return this.life>0; }
+    }
+    function addSmoke(canvas, col, row) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+      const cx = (PADDING + col*CELL_SIZE + CELL_SIZE/2) * scaleX;
+      const cy = (PADDING + row*CELL_SIZE + CELL_SIZE/2) * scaleY;
+      for (let i=0; i<8; i++) smokeParticles.push(new SmokeParticle(cx, cy));
+    }
+    function updateAndDrawSmoke(ctx) {
+      for (let i=smokeParticles.length-1; i>=0; i--) {
+        smokeParticles[i].update();
+        if (!smokeParticles[i].alive) smokeParticles.splice(i,1);
+        else smokeParticles[i].draw(ctx);
+      }
+    }
+
+    // ==================== ОТРИСОВКА ====================
+    function drawBoard(ctx, board, isOpponent = false) {
+      ctx.clearRect(0,0,350,350);
+      ctx.fillStyle = '#021a2b'; ctx.fillRect(0,0,350,350);
+      for (let y=0; y<BOARD_SIZE; y++) for (let x=0; x<BOARD_SIZE; x++) {
+        const cx = PADDING + x*CELL_SIZE, cy = PADDING + y*CELL_SIZE;
+        const cell = board[y][x];
+        if (cell === 5) { ctx.fillStyle='#5d4037'; ctx.fillRect(cx+2,cy+2,CELL_SIZE-4,CELL_SIZE-4); continue; }
+        ctx.strokeStyle = 'rgba(0,188,212,0.25)'; ctx.strokeRect(cx, cy, CELL_SIZE, CELL_SIZE);
+        if (cell === 1 && !isOpponent) { ctx.fillStyle='#4fc3f7'; ctx.fillRect(cx+2,cy+2,CELL_SIZE-4,CELL_SIZE-4); }
+        else if (cell === 2) { ctx.fillStyle='#ff5252'; ctx.beginPath(); ctx.arc(cx+15,cy+15,10,0,2*Math.PI); ctx.fill(); }
+        else if (cell === 3) { ctx.fillStyle='#b0bec5'; ctx.beginPath(); ctx.arc(cx+15,cy+15,4,0,2*Math.PI); ctx.fill(); }
+        else if (cell === 4) { ctx.fillStyle='#1a1a1a'; ctx.fillRect(cx+2,cy+2,CELL_SIZE-4,CELL_SIZE-4); ctx.fillStyle='#ff1744'; ctx.font='bold 18px Arial'; ctx.fillText('💥',cx+4,cy+22); }
+        if (cell === 6 && !isOpponent) { ctx.fillStyle='#d32f2f'; ctx.beginPath(); ctx.arc(cx+15,cy+15,6,0,2*Math.PI); ctx.fill(); }
+      }
+      if (!isOpponent && playerShips && opponentShips) {
+        const idx = (gameMode==='ai'||gameMode==='campaign') ? 0 : hotSeatTurn-1;
+        const armored = armor[idx];
+        if (armored) {
+          const ships = idx === 0 ? playerShips : opponentShips;
+          const ship = ships.find(s => s.type===armored.type && s.coords[0].x===armored.coords[0].x && s.coords[0].y===armored.coords[0].y);
+          if (ship && ship.armor > 0) ship.coords.forEach(({x,y}) => {
+            ctx.strokeStyle='gold'; ctx.lineWidth=2; ctx.strokeRect(PADDING+x*CELL_SIZE+2, PADDING+y*CELL_SIZE+2, CELL_SIZE-4, CELL_SIZE-4);
+          });
+        }
+      }
+      if (isOpponent && fogGrid) drawFog(ctx);
+      updateAndDrawSmoke(ctx);
+    }
+    function redrawAll() { drawBoard(playerCtx, playerBoard, false); drawBoard(opponentCtx, opponentBoard, true); }
+    function flashCell(canvas, x, y, color) {
+      const ctx = canvas.getContext('2d'); const board = canvas===playerCanvas ? playerBoard : opponentBoard;
+      ctx.fillStyle = color; ctx.fillRect(PADDING+x*CELL_SIZE, PADDING+y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      setTimeout(() => drawBoard(ctx, board, canvas===opponentCanvas), 200);
+    }
+    function triggerShake() { document.getElementById('battleGrid').classList.add('shake'); setTimeout(() => document.getElementById('battleGrid').classList.remove('shake'), 400); }
+
+    // ==================== ТАЙМЕР ====================
+    function startTimer() {
+      if (!useTimer) return;
+      turnTimeLeft = 30; timerDisplay.innerText = `Осталось: ${turnTimeLeft}с`;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        turnTimeLeft--;
+        timerDisplay.innerText = `Осталось: ${turnTimeLeft}с`;
+        if (turnTimeLeft <= 0) { clearInterval(timerInterval); forcePassTurn(); }
+      }, 1000);
+    }
+    function stopTimer() { clearInterval(timerInterval); timerDisplay.innerText = ''; }
+    function forcePassTurn() {
+      if (gameOver) return;
+      if (gameMode === 'ai' || gameMode === 'campaign') {
+        if (currentTurn === 'player') { currentTurn = 'opponent'; updateUI(); setTimeout(() => aiTurn(), 500); }
+      } else if (gameMode === 'hotseat' && currentTurn === 'player') {
+        hotSeatTurn = hotSeatTurn === 1 ? 2 : 1;
+        updateHotSeatBoards();
+        sfxTurn();
+        showTurnOverlay();
+      }
+    }
+
+    // ==================== ПОДТВЕРЖДЕНИЕ ====================
+    function requestConfirm(coord) {
+      if (!useConfirm) { playerShot(coord); return; }
+      pendingShotCoord = coord;
+      confirmCoord.innerText = `${String.fromCharCode(65+coord.y)}${coord.x+1}`;
+      document.getElementById('confirmOverlay').style.display = 'flex';
+    }
+    window.confirmShot = function(accepted) {
+      document.getElementById('confirmOverlay').style.display = 'none';
+      if (accepted && pendingShotCoord) playerShot(pendingShotCoord);
+      pendingShotCoord = null;
+    };
+
+    // ==================== ИГРОВАЯ ЛОГИКА ====================
+    function playerShot(coord) {
+      if (gameOver || currentTurn !== 'player') return;
+      const targetBoard = opponentBoard, targetShips = opponentShips;
+      if (targetBoard[coord.y][coord.x] === 5) { messageText.innerText = '⛔️ Остров!'; return; }
+      if (targetBoard[coord.y][coord.x] === 2 || targetBoard[coord.y][coord.x] === 3 || targetBoard[coord.y][coord.x] === 4) return;
+      initAudio(); sfxShoot();
+      const attackerIdx = (gameMode==='ai'||gameMode==='campaign') ? 0 : hotSeatTurn-1;
+      const res = receiveShot(targetShips, coord, targetBoard, attackerIdx);
+      flashCell(opponentCanvas, coord.x, coord.y, res.result==='hit'||res.result==='sunk' ? 'rgba(255,80,80,0.9)' : 'rgba(255,235,59,0.6)');
+      triggerShake();
+      if (fogGrid) updateFog(coord);
+      if (res.result === 'hit') { sfxHit(); messageText.innerText = 'Попадание!'; }
+      else if (res.result === 'sunk') { sfxSunk(); messageText.innerText = 'Потопил!'; for (let c of res.ship.coords) addSmoke(opponentCanvas, c.x, c.y); }
+      else if (res.result === 'miss') { sfxMiss(); messageText.innerText = 'Мимо...'; }
+      else if (res.result === 'armor') { sfxArmorBreak(); messageText.innerText = '🛡️ Броня!'; }
+      addLog(`${playerNames.player}: ${res.result} по ${String.fromCharCode(65+coord.y)}${coord.x+1}`);
+      if (areAllShipsSunk(targetShips)) { gameOver = true; winner = 'player'; gameOverActions(); }
+      else if (res.result === 'miss' || res.result === 'armor' || res.result === 'mine') {
+        energy[attackerIdx] = Math.min(MAX_ENERGY, energy[attackerIdx] + ENERGY_REGEN);
+        stopTimer();
+        if (gameMode === 'ai' || gameMode === 'campaign') {
+          currentTurn = 'opponent'; updateUI(); setTimeout(() => aiTurn(), 600);
+        } else {
+          updateUI();
+          setTimeout(() => { if (gameOver) return; hotSeatTurn = hotSeatTurn===1?2:1; updateHotSeatBoards(); sfxTurn(); showTurnOverlay(); }, 700);
+          return;
+        }
+      }
+      updateUI();
+    }
+    function aiTurn() {
+      if (gameOver || currentTurn !== 'opponent') return;
+      let coord;
+      do { coord = ai.getNext(); } while (playerBoard[coord.y][coord.x] === 2 || playerBoard[coord.y][coord.x] === 3 || playerBoard[coord.y][coord.x] === 4);
+      sfxShoot();
+      const res = receiveShot(playerShips, coord, playerBoard, 0);
+      ai.report(coord, res.result);
+      flashCell(playerCanvas, coord.x, coord.y, res.result==='hit'||res.result==='sunk'?'rgba(255,80,80,0.9)':'rgba(255,235,59,0.6)');
+      triggerShake();
+      if (res.result === 'hit') { sfxHit(); messageText.innerText = 'Противник попал!'; }
+      else if (res.result === 'sunk') { sfxSunk(); messageText.innerText = 'Противник потопил!'; for (let c of res.ship.coords) addSmoke(playerCanvas, c.x, c.y); }
+      else if (res.result === 'miss') { sfxMiss(); messageText.innerText = 'Противник промахнулся'; }
+      if (areAllShipsSunk(playerShips)) { gameOver = true; winner = 'opponent'; gameOverActions(); }
+      else if (res.result === 'miss' || res.result === 'armor' || res.result === 'mine') {
+        currentTurn = 'player'; energy[0] = Math.min(MAX_ENERGY, energy[0] + ENERGY_REGEN);
+        stopTimer(); startTimer();
+      } else { setTimeout(() => aiTurn(), 400); return; }
+      updateUI();
+    }
+    function gameOverActions() {
+      if (winner === 'player') { sfxWin(); messageText.innerText = '🎉 Победа!'; if (gameMode==='campaign') campaignMission = Math.min(campaignMission+1, campaignMissions.length-1); }
+      else { sfxLose(); messageText.innerText = '😞 Поражение...'; }
+      stopTimer(); updateUI();
+    }
+    function updateUI() {
+      redrawAll();
+      statusText.innerText = gameOver ? (winner==='player'?'🏆 Победа!':'💀 Поражение') :
+        (gameMode==='ai'? (currentTurn==='player'?'🎯 Ваш ход':'⏳ Ход противника...') : `🎯 Ход ${hotSeatTurn===1?player1Name:player2Name}`);
+      playerLabel.innerText = (gameMode==='ai'||gameMode==='campaign') ? player1Name : (hotSeatTurn===1?player1Name:player2Name);
+      opponentLabel.innerText = (gameMode==='ai'||gameMode==='campaign') ? 'Противник' : (hotSeatTurn===1?player2Name:player1Name);
+      updateEnergyDisplay(); updateBonusButtons();
+    }
+    function updateEnergyDisplay() {
+      const idx = (gameMode==='ai'||gameMode==='campaign') ? 0 : hotSeatTurn-1;
+      const en = energy[idx];
+      playerEnergyFill.style.width = en + '%';
+      playerEnergyText.innerText = `Энергия: ${en}`;
+    }
+    function updateBonusButtons() {
+      const idx = (gameMode==='ai'||gameMode==='campaign') ? 0 : hotSeatTurn-1;
+      const radarBtn = document.getElementById('radarBtn'), airstrikeBtn = document.getElementById('airstrikeBtn');
+      if (gameVariant === 'extended') {
+        radarBtn.classList.remove('hidden'); airstrikeBtn.classList.remove('hidden');
+        radarBtn.disabled = energy[idx] < RADAR_COST; airstrikeBtn.disabled = energy[idx] < AIRSTRIKE_COST;
+      } else { radarBtn.classList.add('hidden'); airstrikeBtn.classList.add('hidden'); }
+    }
+    function updateHotSeatBoards() {
+      if (hotSeatTurn === 1) { playerBoard=player1Board; opponentBoard=player2Board; playerShips=player1Ships; opponentShips=player2Ships; }
+      else { playerBoard=player2Board; opponentBoard=player1Board; playerShips=player2Ships; opponentShips=player1Ships; }
+    }
+    function showTurnOverlay() {
+      document.getElementById('turnOverlayPlayer').innerText = hotSeatTurn===1 ? player1Name : player2Name;
+      document.getElementById('turnOverlay').style.display = 'flex';
+    }
+    window.continueTurn = function() {
+      document.getElementById('turnOverlay').style.display = 'none';
+      startTimer(); updateUI();
+    };
+
+    // ==================== БОНУСЫ ====================
+    window.useRadar = function() {
+      const idx = (gameMode==='ai'||gameMode==='campaign') ? 0 : hotSeatTurn-1;
+      if (energy[idx] < RADAR_COST || gameVariant !== 'extended' || gameOver || currentTurn !== 'player') return;
+      initAudio(); sfxRadar(); energy[idx] -= RADAR_COST;
+      const targetBoard = opponentBoard; const ctx = opponentCanvas.getContext('2d');
+      let found = false;
+      for (let y=0; y<BOARD_SIZE; y++) for (let x=0; x<BOARD_SIZE; x++) if (targetBoard[y][x] === 1) {
+        found = true; ctx.fillStyle = 'rgba(0,255,100,0.85)'; ctx.fillRect(PADDING+x*CELL_SIZE, PADDING+y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        setTimeout(() => drawBoard(ctx, targetBoard, true), 1300);
+      }
+      messageText.innerText = found ? '📡 Радар засёк корабли!' : '📡 Ничего не найдено';
+      updateEnergyDisplay(); updateBonusButtons();
+    };
+    window.useAirstrike = function() {
+      const idx = (gameMode==='ai'||gameMode==='campaign') ? 0 : hotSeatTurn-1;
+      if (energy[idx] < AIRSTRIKE_COST || gameVariant !== 'extended' || gameOver || currentTurn !== 'player') return;
+      initAudio(); sfxAirstrike(); energy[idx] -= AIRSTRIKE_COST;
+      const shipCells = [];
+      for (let y=0; y<BOARD_SIZE; y++) for (let x=0; x<BOARD_SIZE; x++) if (opponentBoard[y][x] === 1) shipCells.push({x,y});
+      if (!shipCells.length) { messageText.innerText = '✈️ Нет целей'; return; }
+      const target = shipCells[Math.floor(Math.random()*shipCells.length)];
+      const res = receiveShot(opponentShips, target, opponentBoard, idx);
+      flashCell(opponentCanvas, target.x, target.y, 'rgba(255,80,80,0.95)');
+      triggerShake();
+      if (res.result === 'hit') { sfxHit(); messageText.innerText = '✈️ Авиаудар попал!'; }
+      else if (res.result === 'sunk') { sfxSunk(); messageText.innerText = '✈️ Потопил!'; for (let c of res.ship.coords) addSmoke(opponentCanvas, c.x, c.y); }
+      if (areAllShipsSunk(opponentShips)) { gameOver = true; winner = 'player'; gameOverActions(); }
+      else if (res.result === 'miss' || res.result === 'armor' || res.result === 'mine') {
+        stopTimer();
+        if (gameMode === 'ai' || gameMode === 'campaign') { currentTurn = 'opponent'; updateUI(); setTimeout(() => aiTurn(), 600); }
+        else { updateUI(); setTimeout(() => { hotSeatTurn = hotSeatTurn===1?2:1; updateHotSeatBoards(); sfxTurn(); showTurnOverlay(); }, 800); return; }
+      }
+      updateUI(); updateEnergyDisplay(); updateBonusButtons();
+    };
+
+    // ==================== ЖУРНАЛ ====================
+    function addLog(msg) {
+      eventLog.push(msg); if (eventLog.length > 5) eventLog.shift();
+      logPanel.innerHTML = eventLog.map(m => `<div>${m}</div>`).join('');
+    }
+
+    // ==================== РАССТАНОВКА ====================
+    function initPlacement() {
+      placementBoard = createEmptyBoard(); islands = generateIslands(placementBoard);
+      islands.forEach(isl => placementBoard[isl.y][isl.x] = 5);
+      placedShips = []; remainingShips = [{type:5,count:1},{type:4,count:1},{type:3,count:2},{type:3,count:1},{type:2,count:2}];
+      selectedShipType = null; isHorizontal = true;
+      renderShipsPanel(); drawPlacement();
+    }
+    function drawPlacement() {
+      drawBoard(placementCtx, placementBoard, false);
+      if (selectedShipType) {
+        placementCanvas.onmousemove = e => {
+          const rect = placementCanvas.getBoundingClientRect();
+          const x = Math.floor((e.clientX-rect.left-PADDING)/CELL_SIZE), y = Math.floor((e.clientY-rect.top-PADDING)/CELL_SIZE);
+          drawBoard(placementCtx, placementBoard, false);
+          if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE) {
+            const coords = generateCoords(x, y, selectedShipSize, isHorizontal);
+            if (coords.length && isValidPlacement(placementBoard, coords)) {
+              coords.forEach(c => {
+                placementCtx.strokeStyle = '#ffeb3b'; placementCtx.lineWidth = 2;
+                placementCtx.strokeRect(PADDING+c.x*CELL_SIZE+1, PADDING+c.y*CELL_SIZE+1, CELL_SIZE-2, CELL_SIZE-2);
+              });
+            }
+          }
+        };
+      } else placementCanvas.onmousemove = null;
+    }
+    function renderShipsPanel() {
+      const panel = document.getElementById('shipsPanel');
+      panel.innerHTML = '';
+      remainingShips.forEach(s => { if (s.count > 0) {
+        const btn = document.createElement('button');
+        btn.className = 'btn'; btn.style.margin = '2px';
+        btn.innerText = `${s.type} (${s.count})`;
+        btn.onclick = () => { selectedShipType = s.type; selectedShipSize = s.type; drawPlacement(); };
+        panel.appendChild(btn);
+      }});
+    }
+    placementCanvas.addEventListener('click', e => {
+      if (!selectedShipType) return;
+      const rect = placementCanvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX-rect.left-PADDING)/CELL_SIZE), y = Math.floor((e.clientY-rect.top-PADDING)/CELL_SIZE);
+      if (x<0||x>=BOARD_SIZE||y<0||y>=BOARD_SIZE) return;
+      const coords = generateCoords(x, y, selectedShipSize, isHorizontal);
+      if (!coords.length || !isValidPlacement(placementBoard, coords)) return;
+      placeShip(placementBoard, selectedShipType, coords);
+      placedShips.push({ type: selectedShipType, coords, hits: Array(coords.length).fill(false), armor:0 });
+      const rem = remainingShips.find(s => s.type === selectedShipType);
+      if (rem) rem.count--;
+      if (rem && rem.count === 0) { selectedShipType = null; selectedShipSize = 0; }
+      renderShipsPanel(); drawPlacement();
+      document.getElementById('startGameBtn').disabled = !remainingShips.every(s => s.count === 0);
+    });
+    placementCanvas.addEventListener('contextmenu', e => { e.preventDefault(); isHorizontal = !isHorizontal; drawPlacement(); });
+
+    // ==================== ПЕРЕХОДЫ ====================
+    window.startPlacement = function() {
+      gameMode = document.getElementById('modeHotseat').classList.contains('selected') ? 'hotseat' :
+                 document.getElementById('modeAI').classList.contains('selected') ? 'ai' : 'campaign';
+      gameVariant = document.getElementById('varClassic').classList.contains('selected') ? 'classic' : 'extended';
+      aiDifficulty = document.getElementById('diffEasy').classList.contains('selected') ? 'easy' :
+                     document.getElementById('diffMedium').classList.contains('selected') ? 'medium' : 'hard';
+      player1Name = document.getElementById('player1Name').value || 'Игрок';
+      player2Name = document.getElementById('player2Name').value || 'Игрок 2';
+      useConfirm = document.getElementById('confirmCheckbox').checked;
+      useTimer = document.getElementById('timerCheckbox').checked;
+      gameVolume = document.getElementById('volumeSlider').value / 100;
+      playerNames.player = player1Name; playerNames.opponent = (gameMode==='ai'||gameMode==='campaign')?'Противник':player2Name;
+
+      document.getElementById('mainMenu').style.display = 'none';
+      document.getElementById('placementScreen').style.display = 'block';
+      hotSeatPlacementTurn = 1;
+      document.getElementById('placementLabel').innerText = (gameMode==='hotseat'?player1Name:'Вы') + ' — расставьте корабли';
+      initPlacement();
+      initAudio();
+    };
+    window.backToMenu = function() {
+      document.getElementById('placementScreen').style.display = 'none';
+      document.getElementById('battleScreen').style.display = 'none';
+      document.getElementById('mainMenu').style.display = 'block';
+      stopTimer();
+    };
+    window.startBattle = function() {
+      if (gameMode === 'hotseat') {
+        if (hotSeatPlacementTurn === 1) {
+          player1Board = placementBoard.map(r => [...r]); player1Ships = placedShips.map(s => ({...s, coords: [...s.coords], hits: [...s.hits]}));
+          placeMines(player1Board, 0); chooseArmor(0, player1Ships);
+          placementBoard = createEmptyBoard(); islands = generateIslands(placementBoard);
+          islands.forEach(isl => placementBoard[isl.y][isl.x] = 5);
+          placedShips = []; remainingShips = [{type:5,count:1},{type:4,count:1},{type:3,count:2},{type:3,count:1},{type:2,count:2}];
+          selectedShipType = null; renderShipsPanel(); drawPlacement();
+          document.getElementById('placementLabel').innerText = player2Name + ' — расставьте корабли';
+          document.getElementById('startGameBtn').disabled = true;
+          hotSeatPlacementTurn = 2;
+          return;
+        } else {
+          player2Board = placementBoard.map(r => [...r]); player2Ships = placedShips.map(s => ({...s, coords: [...s.coords], hits: [...s.hits]}));
+          placeMines(player2Board, 1); chooseArmor(1, player2Ships);
+          hotSeatTurn = 1; updateHotSeatBoards(); currentTurn = 'player'; gameOver = false;
+          energy = [MAX_ENERGY, MAX_ENERGY];
+        }
+      } else {
+        playerBoard = placementBoard.map(r => [...r]); playerShips = placedShips.map(s => ({...s, coords: [...s.coords], hits: [...s.hits]}));
+        placeMines(playerBoard, 0); chooseArmor(0, playerShips);
+        const opp = generateRandomPlacement();
+        opponentBoard = opp.board; opponentShips = opp.ships;
+        if (gameMode === 'campaign') {
+          const mission = campaignMissions[campaignMission];
+          if (mission.options.aiMines) placeMines(opponentBoard, 1);
+          if (mission.options.aiArmor && opponentShips.length) opponentShips[0].armor = 1;
+          if (mission.options.energyStart) energy[0] = mission.options.energyStart;
+          if (mission.options.fog) initFog();
+        }
+        ai = new AIPlayer(aiDifficulty);
+        currentTurn = 'player'; gameOver = false;
+      }
+      document.getElementById('placementScreen').style.display = 'none';
+      document.getElementById('battleScreen').style.display = 'block';
+      document.getElementById('playerLabel').innerText = (gameMode==='ai'||gameMode==='campaign')?player1Name:player1Name;
+      document.getElementById('opponentLabel').innerText = (gameMode==='ai'||gameMode==='campaign')?'Противник':player2Name;
+      updateUI(); startTimer();
+    };
+    function chooseArmor(playerIdx, ships) {
+      if (ships.length > 0) { ships[0].armor = 1; armor[playerIdx] = { type: ships[0].type, coords: ships[0].coords }; }
+    }
+    opponentCanvas.addEventListener('click', e => {
+      if (gameOver || currentTurn !== 'player') return;
+      const rect = opponentCanvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX-rect.left-PADDING)/CELL_SIZE), y = Math.floor((e.clientY-rect.top-PADDING)/CELL_SIZE);
+      if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE) requestConfirm({x,y});
+    });
+    opponentCanvas.addEventListener('mousemove', e => {
+      const rect = opponentCanvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX-rect.left-PADDING)/CELL_SIZE), y = Math.floor((e.clientY-rect.top-PADDING)/CELL_SIZE);
+      if (x>=0 && x<BOARD_SIZE && y>=0 && y<BOARD_SIZE) hoverCoords = {x,y}; else hoverCoords = null;
+      redrawAll();
+    });
+    opponentCanvas.addEventListener('mouseleave', () => { hoverCoords = null; redrawAll(); });
+
+    // ==================== СОХРАНЕНИЕ / ЗАГРУЗКА ====================
+    window.saveGame = function() {
+      const saveData = { gameMode, gameVariant, aiDifficulty, hotSeatTurn, hotSeatPlacementTurn,
+        player1Board, player2Board, player1Ships, player2Ships, energy, mines, armor, islands, eventLog,
+        currentTurn, gameOver, winner, fogGrid, campaignMission, player1Name, player2Name };
+      localStorage.setItem('seaBattlePremiumSave', JSON.stringify(saveData));
+      alert('Игра сохранена!');
+    };
+    window.loadGame = function() {
+      const saved = localStorage.getItem('seaBattlePremiumSave');
+      if (!saved) return alert('Нет сохранения.');
+      const data = JSON.parse(saved);
+      gameMode = data.gameMode; gameVariant = data.gameVariant; aiDifficulty = data.aiDifficulty || 'medium';
+      hotSeatTurn = data.hotSeatTurn; hotSeatPlacementTurn = data.hotSeatPlacementTurn;
+      player1Board = data.player1Board; player2Board = data.player2Board;
+      player1Ships = data.player1Ships; player2Ships = data.player2Ships;
+      energy = data.energy; mines = data.mines; armor = data.armor; islands = data.islands; eventLog = data.eventLog || [];
+      currentTurn = data.currentTurn; gameOver = data.gameOver; winner = data.winner;
+      fogGrid = data.fogGrid || null; campaignMission = data.campaignMission || 0;
+      player1Name = data.player1Name || 'Игрок'; player2Name = data.player2Name || 'Игрок 2';
+      if (gameMode === 'hotseat') updateHotSeatBoards();
+      else { playerBoard = player1Board; playerShips = player1Ships; opponentBoard = player2Board; opponentShips = player2Ships; }
+      document.getElementById('mainMenu').style.display = 'none';
+      document.getElementById('placementScreen').style.display = 'none';
+      document.getElementById('battleScreen').style.display = 'block';
+      updateUI(); if (currentTurn === 'player') startTimer();
+    };
+    window.newGame = function() { stopTimer(); document.getElementById('battleScreen').style.display = 'none'; backToMenu(); };
+
+    // ==================== МЕНЮ ====================
+    document.querySelectorAll('.option-group .btn').forEach(b => {
+      b.addEventListener('click', function(e) {
+        this.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+      });
+    });
+  </script>
+</body>
+</html>
